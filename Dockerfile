@@ -4,13 +4,13 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     fonts-liberation \
     fontconfig \
-    wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/share/fonts/truetype/playfair && \
-    wget -q "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Bold.ttf" \
-    -O /usr/share/fonts/truetype/playfair/PlayfairDisplay-Bold.ttf && \
+    curl -L --retry 3 --retry-delay 2 \
+    "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Bold.ttf" \
+    -o /usr/share/fonts/truetype/playfair/PlayfairDisplay-Bold.ttf || true && \
     fc-cache -f -v
 
 RUN mkdir -p /home/covertidos/app \
