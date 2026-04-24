@@ -242,9 +242,71 @@ def calcular_proximo_agendamento(horario: str = "18:00", tz: str = "America/Sao_
     return scheduled.isoformat()
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+SCOPES = [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube",
+]
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "covertidos-api"}
+
+@app.get("/auth/login")
+def auth_login():
+    from google_auth_oauthlib.flow import Flow
+    flow = Flow.from_client_config(
+        {
+            "web": {
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["https://api-covertidos.vexoworks.com/auth/callback"],
+            }
+        },
+        scopes=SCOPES,
+        redirect_uri="https://api-covertidos.vexoworks.com/auth/callback",
+    )
+    auth_url, _ = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
+    )
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(auth_url)
+
+@app.get("/auth/callback")
+def auth_callback(code: str):
+    from google_auth_oauthlib.flow import Flow
+    flow = Flow.from_client_config(
+        {
+            "web": {
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["https://api-covertidos.vexoworks.com/auth/callback"],
+            }
+        },
+        scopes=SCOPES,
+        redirect_uri="https://api-covertidos.vexoworks.com/auth/callback",
+    )
+    flow.fetch_token(code=code)
+    creds = flow.credentials
+    token_data = {
+        "token": creds.token,
+        "refresh_token": creds.refresh_token,
+        "token_uri": creds.token_uri,
+        "scopes": list(creds.scopes) if creds.scopes else SCOPES,
+    }
+    import json
+    token_json = json.dumps(token_data)
+    return {
+        "message": "✅ Autorização concluída! Copie o GOOGLE_TOKENS_JSON abaixo e adicione no Easypanel em Ambiente.",
+        "GOOGLE_TOKENS_JSON": token_json,
+        "instrucao": "Cole o valor de GOOGLE_TOKENS_JSON exatamente como está nas variáveis de ambiente do Easypanel."
+    }
 
 @app.post("/covertidos/processar")
 def processar(req: ProcessarRequest):
